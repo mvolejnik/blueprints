@@ -6,20 +6,24 @@ services:
     init: true
     working_dir: /workspace
     ports:
-      - "8000:8080"   # WireMock
+      - "8020:8080"   # WireMock
     environment:
       AMQP_HOST: rabbitmq
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
+#    depends_on:
+#      rabbitmq:
+#        condition: service_healthy
+#        required: false   # don't fail when the "tools" profile is off
     volumes:
       - ${HOME}/Git:/workspace
       - claude-config:/home/claude/.claude
       # Optional: reuse your git identity (read-only)
       # - ${HOME}/.gitconfig:/home/claude/.gitconfig:ro
 
+  # Started only with the "tools" profile: `docker compose --profile tools up -d`
+  # (or COMPOSE_PROFILES=tools)
   rabbitmq:
     image: rabbitmq:4.4.0-management-alpine   # same as CI
+    profiles: [tools]
     ports:
       - "15672:15672"   # management UI (guest/guest)
     healthcheck:
