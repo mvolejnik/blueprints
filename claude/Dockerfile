@@ -101,7 +101,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     && npm install -g typescript
 
 # Docker CLI + Compose v2 + Buildx from Docker's official apt repo (latest, not Debian's docker.io).
-# CLI only: talks to the host daemon via a mounted /var/run/docker.sock.
+# CLI only: talks to the "docker" (docker:dind) sidecar from compose.yaml via DOCKER_HOST,
+# never to the host daemon.
 RUN set -eux; \
     curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /usr/share/keyrings/docker.gpg; \
     . /etc/os-release; \
