@@ -25,17 +25,17 @@ ARG KUBECTL_VERSION=
 ARG ANSIBLE_VERSION=
 ARG ANSIBLE_PYTHON_VERSION=3.14
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt update && apt install -y --no-install-recommends \
       curl ca-certificates gnupg git ripgrep less openssh-client \
-      gcc libc6-dev make fontconfig tzdata unzip \
+      gcc libc6-dev make fontconfig tzdata unzip netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # Java: Azul Zulu JDK (OpenJDK build) from Azul's apt repo
 RUN curl -fsSL https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" \
        > /etc/apt/sources.list.d/zulu.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends "zulu${JAVA_VERSION}-jdk-headless" \
+    && apt update \
+    && apt install -y --no-install-recommends "zulu${JAVA_VERSION}-jdk-headless" \
     && rm -rf /var/lib/apt/lists/* \
     && ln -s "$(dirname "$(dirname "$(readlink -f /usr/bin/javac)")")" /opt/java
 
@@ -95,8 +95,8 @@ RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
        -o /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
        > /etc/apt/sources.list.d/github-cli.list \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends gh jq nodejs npm \
+    && apt update \
+    && apt install -y --no-install-recommends gh jq nodejs npm \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g typescript
 
@@ -108,8 +108,8 @@ RUN set -eux; \
     . /etc/os-release; \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker.gpg] https://download.docker.com/linux/debian ${VERSION_CODENAME} stable" \
       > /etc/apt/sources.list.d/docker.list; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin docker-buildx-plugin; \
+    apt update; \
+    apt install -y --no-install-recommends docker-ce-cli docker-compose-plugin docker-buildx-plugin; \
     rm -rf /var/lib/apt/lists/*; \
     docker --version; docker compose version
 
@@ -138,6 +138,19 @@ RUN uv tool install --python "${ANSIBLE_PYTHON_VERSION}" \
 
 # Claude Code (native installer)
 RUN curl -fsSL https://claude.ai/install.sh | bash
+
+# k6 agent kit for Claude Code: skills + k6 MCP server (`k6 x agent init claude-code`).
+# init writes project-scoped files into the cwd, but /workspace is bind-mounted and ~/.claude is
+# a named volume (only seeded on first creation), so stage the output in the image here and let
+# entrypoint.sh install it at user scope on every start.
+# Also pre-provisions the `agent` and `mcp` k6 extension binaries (~/.cache/k6) so nothing is
+# built/downloaded at runtime.
+RUN set -eux; \
+    stage=/home/claude/.local/share/k6-agent; \
+    mkdir -p "$stage"; cd "$stage"; \
+    k6 x agent init claude-code --force; \
+    k6 x mcp --help >/dev/null; \
+    test -d .claude/skills
 
 COPY --chmod=755 entrypoint.sh /usr/local/bin/entrypoint.sh
 

@@ -7,6 +7,8 @@ services:
     working_dir: /workspace
     ports:
       - "8020:8080"   # WireMock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # reach host services, e.g. http://host.docker.internal:8000
     environment:
       AMQP_HOST: rabbitmq
       DOCKER_HOST: unix:///run/dind/docker.sock   # the "docker" sidecar below, not the host daemon
